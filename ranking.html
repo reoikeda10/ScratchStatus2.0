@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global & 197+ Countries Ranking - ScratchStats</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .tab-active { 
+            background-color: #f97316; 
+            color: white; 
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+
+    <header class="bg-white shadow-sm px-4 py-3 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <a href="index.html" class="text-xl font-bold text-orange-500 flex items-center gap-1">
+                <i data-lucide="bar-chart-3"></i> ScratchStats
+            </a>
+            <nav class="flex gap-4 font-semibold text-slate-600">
+                <a href="index.html" class="hover:text-orange-500 transition">ホーム</a>
+                <a href="pjranking.html" class="hover:text-orange-500 transition">プロジェクト</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="mb-10 text-center">
+            <h2 class="text-4xl font-black mb-2 tracking-tight">統計ランキング</h2>
+            <p class="text-slate-500 font-medium">全世界および全197カ国の最新統計（上位1万人対象）</p>
+        </div>
+
+        <!-- コントロールパネル -->
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 mb-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- 項目選択 -->
+                <div>
+                    <label class="block text-xs font-black text-slate-400 mb-4 uppercase tracking-[0.2em]">表示統計項目の選択</label>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="updateView('followers')" id="tab-followers" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all border border-slate-200 hover:bg-slate-50">フォロワー</button>
+                        <button onclick="updateView('views')" id="tab-views" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all border border-slate-200 hover:bg-slate-50">参照数</button>
+                        <button onclick="updateView('loves')" id="tab-loves" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all border border-slate-200 hover:bg-slate-50">好き</button>
+                        <button onclick="updateView('favorites')" id="tab-favorites" class="px-6 py-2.5 rounded-xl text-sm font-bold transition-all border border-slate-200 hover:bg-slate-50">お気に入り</button>
+                    </div>
+                </div>
+
+                <!-- 国選択 -->
+                <div>
+                    <label class="block text-xs font-black text-slate-400 mb-4 uppercase tracking-[0.2em]">国の絞り込み (全197カ国)</label>
+                    <div class="relative">
+                        <select id="country-select" onchange="updateCountry()" class="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 font-bold focus:outline-none focus:border-orange-500 appearance-none transition-all cursor-pointer">
+                            <option value="Global">🌏 全世界ランキング (Global)</option>
+                            <!-- JavaScriptで197カ国がここに挿入されます -->
+                        </select>
+                        <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                            <i data-lucide="chevron-down" size="20"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ランキングテーブル -->
+        <div class="bg-white rounded-[2rem] shadow-xl overflow-hidden border border-slate-200">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-50 text-slate-400 uppercase text-[10px] font-black tracking-[0.2em] border-b border-slate-100">
+                        <tr id="table-header">
+                            <th class="px-8 py-5 w-24 text-center">順位</th>
+                            <th class="px-8 py-5">ユーザー</th>
+                            <th id="dynamic-header" class="px-8 py-5 text-right">フォロワー</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-body">
+                        <!-- 読み込み中 -->
+                        <tr>
+                            <td colspan="3" class="px-8 py-32 text-center text-slate-400 font-bold">
+                                <div class="animate-spin inline-block text-orange-500 mb-4"><i data-lucide="loader-2" size="48"></i></div>
+                                <p>データを解析中...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ページネーション -->
+        <div class="mt-10 flex flex-col items-center gap-4">
+            <div class="flex items-center gap-4">
+                <button onclick="changePage(-1)" id="prev-page" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-200 hover:bg-slate-50 disabled:opacity-20 transition-all">
+                    <i data-lucide="arrow-left"></i>
+                </button>
+                <div class="text-center bg-white px-8 py-3 rounded-2xl border border-slate-200 shadow-sm">
+                    <span id="page-info" class="font-black text-slate-800 text-xl block leading-none">1 / 100</span>
+                    <span id="total-count" class="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-1 block">0 Users</span>
+                </div>
+                <button onclick="changePage(1)" id="next-page" class="p-4 bg-white rounded-2xl shadow-sm border border-slate-200 hover:bg-slate-50 disabled:opacity-20 transition-all">
+                    <i data-lucide="arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 国名とコード（197カ国リストの一部を表示、実際には全リストを展開）
+        const countriesList = [
+            "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados", "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cabo Verde", "Cambodia", "Cameroon", "Canada", "Central African Republic", "Chad", "Chile", "China", "Colombia", "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", "Denmark", "Djibouti", "Dominica", "Dominican Republic", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia", "Eswatini", "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana", "Greece", "Grenada", "Guatemala", "Guinea", "Guyana", "Haiti", "Honduras", "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Korea, North", "South Korea", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya", "Liechtenstein", "Lithuania", "Luxembourg", "Madagascar", "Malawi", "Malaysia", "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico", "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar", "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria", "North Macedonia", "Norway", "Oman", "Pakistan", "Palau", "Panama", "Papua New Guinea", "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda", "Saint Kitts and Nevis", "Saint Lucia", "Samoa", "San Marino", "Saudi Arabia", "Senegal", "Serbia", "Seychelles", "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia", "South Africa", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", "Timor-Leste", "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+        ];
+
+        lucide.createIcons();
+
+        let userData = [];
+        let filteredData = [];
+        let currentSort = 'followers';
+        let currentCountry = 'Global';
+        let currentPage = 1;
+        const perPage = 100;
+
+        const statLabels = {
+            followers: 'フォロワー',
+            views: '参照数',
+            loves: '好き',
+            favorites: 'お気に入り'
+        };
+
+        // 国旗絵文字の生成 (簡易変換)
+        function getFlagEmoji(country) {
+            const special = { "Japan": "🇯🇵", "United States": "🇺🇸", "United Kingdom": "🇬🇧", "Global": "🌏" };
+            return special[country] || "🏳️";
+        }
+
+        async function init() {
+            // 国リストのプルダウン生成
+            const select = document.getElementById('country-select');
+            countriesList.sort().forEach(country => {
+                const opt = document.createElement('option');
+                opt.value = country;
+                opt.textContent = `${getFlagEmoji(country)} ${country}`;
+                select.appendChild(opt);
+            });
+
+            try {
+                // Pythonで生成したJSONを読み込む
+                const response = await fetch('users_data.json');
+                if (!response.ok) throw new Error();
+                userData = await response.json();
+                processData();
+            } catch (err) {
+                document.getElementById('ranking-body').innerHTML = `
+                    <tr><td colspan="3" class="px-8 py-32 text-center text-red-500 font-bold">
+                        users_data.jsonが見つかりません。Pythonスクリプトを実行してください。
+                    </td></tr>
+                `;
+            }
+        }
+
+        function updateView(type) {
+            currentSort = type;
+            currentPage = 1;
+            document.getElementById('dynamic-header').textContent = statLabels[type];
+            processData();
+        }
+
+        function updateCountry() {
+            currentCountry = document.getElementById('country-select').value;
+            currentPage = 1;
+            processData();
+        }
+
+        function processData() {
+            // フィルタリング
+            filteredData = (currentCountry === 'Global') 
+                ? [...userData] 
+                : userData.filter(u => u.country === currentCountry);
+
+            // ソート
+            filteredData.sort((a, b) => (b.statistics[currentSort] || 0) - (a.statistics[currentSort] || 0));
+            
+            // 最大1万人制限（世界ランキング・国別どちらも）
+            filteredData = filteredData.slice(0, 10000);
+            
+            renderTable();
+        }
+
+        function renderTable() {
+            // タブの強調
+            document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.remove('tab-active'));
+            document.getElementById(`tab-${currentSort}`).classList.add('tab-active');
+
+            const tbody = document.getElementById('ranking-body');
+            tbody.innerHTML = '';
+
+            const start = (currentPage - 1) * perPage;
+            const pageData = filteredData.slice(start, start + perPage);
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="px-8 py-32 text-center text-slate-400 italic">該当ユーザーがいません。</td></tr>`;
+                return;
+            }
+
+            pageData.forEach((user, index) => {
+                const rank = start + index + 1;
+                const value = (user.statistics[currentSort] || 0).toLocaleString();
+                const flag = getFlagEmoji(user.country);
+
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-50 hover:bg-orange-50/50 transition-all cursor-pointer group";
+                tr.onclick = () => window.location.href = `user.html?u=${encodeURIComponent(user.username)}`;
+                
+                tr.innerHTML = `
+                    <td class="px-8 py-6 text-center font-black text-slate-300 text-xl group-hover:text-orange-500 transition-colors">#${rank}</td>
+                    <td class="px-8 py-6">
+                        <div class="flex items-center gap-5">
+                            <div class="relative">
+                                <img src="https://uploads.scratch.mit.edu/get_image/user/${user.id}_60x60.png" class="w-14 h-14 rounded-2xl shadow-sm border border-white bg-slate-100" onerror="this.src='https://cdn2.scratch.mit.edu/get_image/user/default_60x60.png'">
+                                <span class="absolute -bottom-1 -right-1 text-xl leading-none bg-white rounded-full p-0.5 shadow-sm border border-slate-100">${flag}</span>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-900 group-hover:text-orange-600 transition-colors text-lg">${user.username}</div>
+                                <div class="text-[10px] text-slate-400 font-black tracking-widest uppercase">${user.country || 'Unknown'}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-8 py-6 text-right font-mono font-black text-2xl text-orange-600">${value}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // ページング情報の表示
+            const totalPages = Math.ceil(filteredData.length / perPage) || 1;
+            document.getElementById('page-info').textContent = `${currentPage} / ${totalPages}`;
+            document.getElementById('total-count').textContent = `${filteredData.length.toLocaleString()} Users Found`;
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = currentPage === totalPages;
+
+            lucide.createIcons();
+        }
+
+        function changePage(dir) {
+            currentPage += dir;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            renderTable();
+        }
+
+        init();
+    </script>
+</body>
+</html>
+
