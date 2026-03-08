@@ -7,173 +7,338 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: white; }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .glass-panel { background: rgba(30, 41, 59, 0.6); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .stat-value { font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
+        
+        /* タブ切り替えのアニメーション用 */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* スクロールバー非表示（スマホ用） */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="min-h-screen">
+<body class="min-h-screen pb-12">
 
-    <div class="max-w-md mx-auto px-6 py-12">
-        <header class="mb-8">
-            <a href="index.html" class="inline-flex items-center gap-2 text-orange-500 font-bold hover:underline">
-                <i data-lucide="chevron-left"></i> 戻る
+    <div class="max-w-2xl mx-auto px-4 py-8">
+        <!-- ヘッダー -->
+        <header class="mb-6 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-2 text-orange-500 font-bold hover:text-orange-400 transition">
+                <i data-lucide="arrow-left"></i> トップに戻る
             </a>
+            <span id="system-status" class="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Connecting...</span>
         </header>
 
-        <!-- 状態表示 -->
-        <div id="loading" class="text-center py-20">
-            <div class="animate-spin text-orange-500 inline-block mb-4"><i data-lucide="refresh-cw" size="40"></i></div>
-            <p class="text-slate-400 font-medium">プロキシ経由でデータを取得中...</p>
+        <!-- ローディング・エラー画面 -->
+        <div id="loading-view" class="text-center py-32">
+            <div class="animate-spin text-orange-500 inline-block mb-4"><i data-lucide="loader-2" size="48"></i></div>
+            <p class="text-slate-400 font-bold tracking-widest">データを解析中...</p>
         </div>
 
-        <!-- 診断ログ (問題解決用) -->
-        <div id="debug-log" class="hidden bg-black/60 p-4 rounded-xl mb-6 font-mono text-[9px] text-green-400 border border-white/10 overflow-x-auto">
-            <div class="text-white border-b border-white/10 mb-1 pb-1">System Log:</div>
-            <div id="log-text"></div>
-        </div>
-
-        <!-- エラー表示 -->
-        <div id="error-view" class="hidden">
-            <div class="bg-red-500/10 border border-red-500/50 p-8 rounded-[2rem] text-center mb-6">
-                <i data-lucide="x-circle" class="text-red-500 mx-auto mb-4" size="48"></i>
-                <h2 class="text-xl font-bold text-red-500 mb-2">取得できませんでした</h2>
+        <div id="error-view" class="hidden text-center py-20">
+            <div class="bg-red-500/10 border border-red-500/30 p-8 rounded-3xl mb-6">
+                <i data-lucide="alert-triangle" class="text-red-500 mx-auto mb-4" size="40"></i>
+                <h2 class="text-xl font-bold text-red-400 mb-2">ユーザーデータの取得に失敗</h2>
                 <p id="error-msg" class="text-slate-400 text-sm mb-4"></p>
-                <button onclick="location.reload()" class="w-full py-3 bg-slate-800 rounded-xl font-bold text-white">リトライ</button>
+                <button onclick="location.reload()" class="px-8 py-3 bg-red-500/20 hover:bg-red-500/40 text-red-300 rounded-xl font-bold transition">再試行</button>
             </div>
         </div>
 
-        <!-- ユーザーカード -->
-        <div id="user-view" class="hidden">
-            <div class="glass-card p-8 rounded-[3rem] shadow-2xl text-center">
-                <div class="relative inline-block mb-6">
-                    <img id="avatar" src="" class="w-32 h-32 rounded-[2.5rem] shadow-2xl border-4 border-slate-700 bg-slate-800 object-cover">
-                    <div id="country-tag" class="absolute -bottom-2 -right-2 bg-white text-slate-900 px-3 py-1 rounded-full text-[10px] font-black shadow-lg border border-slate-200">UNKNOWN</div>
-                </div>
-
-                <h2 id="name" class="text-3xl font-black mb-1 tracking-tight">---</h2>
-                <p id="joined" class="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-8">Joined ---</p>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-slate-900/50 p-5 rounded-3xl border border-white/5">
-                        <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest mb-1">Followers</p>
-                        <p id="stat-followers" class="text-2xl font-bold">---</p>
+        <!-- メインコンテンツ -->
+        <div id="main-content" class="hidden space-y-6">
+            
+            <!-- 1. プロフィールカード -->
+            <div class="glass-panel p-6 rounded-[2rem] shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                <div class="flex items-center gap-6 relative z-10">
+                    <div class="relative shrink-0">
+                        <img id="u-avatar" src="" class="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl shadow-xl border-2 border-slate-700 bg-slate-800 object-cover">
+                        <div id="u-flag" class="absolute -bottom-2 -right-2 text-2xl drop-shadow-md">🏳️</div>
                     </div>
-                    <div class="bg-slate-900/50 p-5 rounded-3xl border border-white/5">
-                        <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">Total Views</p>
-                        <p id="stat-views" class="text-2xl font-bold">---</p>
-                    </div>
-                </div>
-
-                <div class="mt-8 pt-8 border-t border-white/5">
-                    <div class="flex justify-between items-center px-2">
-                        <div class="text-left">
-                            <p class="text-[9px] font-black text-slate-500 uppercase">Global Rank</p>
-                            <p id="rank" class="text-lg font-bold text-slate-300">#---</p>
-                        </div>
-                        <i data-lucide="award" class="text-orange-500" size="24"></i>
+                    <div>
+                        <h1 id="u-name" class="text-3xl sm:text-4xl font-black mb-1 tracking-tight text-white">---</h1>
+                        <p id="u-country-name" class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">---</p>
+                        <p id="u-joined" class="text-slate-500 text-[10px] font-black uppercase flex items-center gap-1">
+                            <i data-lucide="calendar" size="12"></i> Joined ---
+                        </p>
                     </div>
                 </div>
             </div>
+
+            <!-- 2. 統計グリッド (4項目 x 順位) -->
+            <div class="grid grid-cols-2 gap-3 sm:gap-4">
+                <!-- フォロワー -->
+                <div class="glass-panel p-4 sm:p-5 rounded-3xl border-t-2 border-t-orange-500">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i data-lucide="users" size="16" class="text-orange-500"></i>
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">フォロワー</span>
+                    </div>
+                    <p id="s-followers" class="text-2xl sm:text-3xl font-black mb-3 stat-value text-white">---</p>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[9px] font-bold">
+                            <span class="text-slate-500">世界順位</span>
+                            <span id="r-followers-g" class="text-orange-400">#---</span>
+                        </div>
+                        <div class="flex justify-between text-[9px] font-bold">
+                            <span class="text-slate-500">国内順位</span>
+                            <span id="r-followers-c" class="text-orange-400">#---</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 参照数 -->
+                <div class="glass-panel p-4 sm:p-5 rounded-3xl border-t-2 border-t-blue-500">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i data-lucide="eye" size="16" class="text-blue-500"></i>
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">総参照数</span>
+                    </div>
+                    <p id="s-views" class="text-2xl sm:text-3xl font-black mb-3 stat-value text-white">---</p>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[9px] font-bold">
+                            <span class="text-slate-500">世界順位</span>
+                            <span id="r-views-g" class="text-blue-400">#---</span>
+                        </div>
+                        <div class="flex justify-between text-[9px] font-bold">
+                            <span class="text-slate-500">国内順位</span>
+                            <span id="r-views-c" class="text-blue-400">#---</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 好き -->
+                <div class="glass-panel p-4 sm:p-5 rounded-3xl border-t-2 border-t-rose-500">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i data-lucide="heart" size="16" class="text-rose-500"></i>
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">総好き</span>
+                    </div>
+                    <p id="s-loves" class="text-2xl sm:text-3xl font-black mb-3 stat-value text-white">---</p>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[9px] font-bold">
+                            <span class="text-slate-500">世界順位</span>
+                            <span id="r-loves-g" class="text-rose-400">#---</span>
+                        </div>
+                        <div class="flex justify-between text-[9px] font-bold">
+                            <span class="text-slate-500">国内順位</span>
+                            <span id="r-loves-c" class="text-rose-400">#---</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- お気に入り -->
+                <div class="glass-panel p-4 sm:p-5 rounded-3xl border-t-2 border-t-amber-500">
+                    <div class="flex items-center gap-2 mb-2">
+                        <i data-lucide="star" size="16" class="text-amber-500"></i>
+                        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">総お気に入り</span>
+                    </div>
+                    <p id="s-favs" class="text-2xl sm:text-3xl font-black mb-3 stat-value text-white">---</p>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[9px] font-bold">
+                            <span class="text-slate-500">世界順位</span>
+                            <span id="r-favs-g" class="text-amber-400">#---</span>
+                        </div>
+                        <div class="flex justify-between text-[9px] font-bold">
+                            <span class="text-slate-500">国内順位</span>
+                            <span id="r-favs-c" class="text-amber-400">#---</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. エンゲージメント率 (割合) -->
+            <div class="glass-panel p-6 rounded-[2rem]">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i data-lucide="pie-chart" size="14"></i> エンゲージメント率 (対参照数)
+                </h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-sm font-bold mb-1">
+                            <span class="text-slate-300">好きの割合</span>
+                            <span id="rate-loves" class="text-rose-400 stat-value">0.00%</span>
+                        </div>
+                        <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div id="bar-loves" class="h-full bg-rose-500 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm font-bold mb-1">
+                            <span class="text-slate-300">お気に入りの割合</span>
+                            <span id="rate-favs" class="text-amber-400 stat-value">0.00%</span>
+                        </div>
+                        <div class="h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div id="bar-favs" class="h-full bg-amber-500 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. 人気プロジェクト -->
+            <div class="glass-panel p-6 rounded-[2rem]">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <i data-lucide="folder-star" size="14"></i> 人気プロジェクト トップ3
+                </h3>
+                
+                <!-- タブボタン -->
+                <div class="flex gap-2 mb-4 bg-slate-800/50 p-1 rounded-xl">
+                    <button onclick="switchTab('views')" id="tab-btn-views" class="flex-1 py-2 rounded-lg text-xs font-bold transition bg-slate-700 text-white shadow-sm">参照数</button>
+                    <button onclick="switchTab('loves')" id="tab-btn-loves" class="flex-1 py-2 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white">好き</button>
+                    <button onclick="switchTab('favs')" id="tab-btn-favs" class="flex-1 py-2 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white">お気に入り</button>
+                </div>
+
+                <!-- プロジェクトリスト -->
+                <div id="tab-views" class="tab-content active space-y-3"></div>
+                <div id="tab-loves" class="tab-content space-y-3"></div>
+                <div id="tab-favs" class="tab-content space-y-3"></div>
+            </div>
+
         </div>
     </div>
 
     <script>
         lucide.createIcons();
-        const logArea = document.getElementById('log-text');
-        const debugPanel = document.getElementById('debug-log');
         
-        function log(m) {
-            debugPanel.classList.remove('hidden');
-            logArea.innerHTML += `<div>> ${m}</div>`;
-            console.log(m);
+        const params = new URLSearchParams(window.location.search);
+        const username = params.get('u');
+        
+        // 状態表示用
+        const setStatus = (msg) => { document.getElementById('system-status').textContent = msg; console.log(msg); };
+
+        // --- 国旗マッピング (主要国・代表例) ---
+        const flags = {
+            "Japan": "🇯🇵", "United States": "🇺🇸", "United Kingdom": "🇬🇧", "Canada": "🇨🇦",
+            "Australia": "🇦🇺", "Germany": "🇩🇪", "France": "🇫🇷", "Italy": "🇮🇹", "Spain": "🇪🇸",
+            "Brazil": "🇧🇷", "China": "🇨🇳", "South Korea": "🇰🇷", "India": "🇮🇳", "Russia": "🇷🇺",
+            "Mexico": "🇲🇽", "Indonesia": "🇮🇩", "Turkey": "🇹🇷", "Poland": "🇵🇱", "Taiwan": "🇹🇼"
+        };
+        const getFlag = (country) => flags[country] || "🏳️";
+
+        // --- 数値フォーマット ---
+        const fmt = (num) => num != null ? num.toLocaleString() : "---";
+        const fmtRank = (num) => num != null ? `#${num.toLocaleString()}` : "---";
+
+        // --- プロキシを使ったFetch関数 ---
+        async function fetchWithProxy(targetUrl) {
+            const proxy = "https://api.allorigins.win/raw?url=";
+            const res = await fetch(proxy + encodeURIComponent(targetUrl), { cache: 'no-cache' });
+            if (!res.ok) throw new Error(`Status ${res.status}`);
+            return await res.json();
         }
 
-        const params = new URLSearchParams(window.location.search);
-        const user = params.get('u');
-
-        // CORS回避用のプロキシURL (複数の予備)
-        const PROXIES = [
-            "https://api.allorigins.win/raw?url=",
-            "https://corsproxy.io/?",
-            "https://thingproxy.freeboard.io/fetch/"
-        ];
-
-        async function fetchData(username) {
-            log(`Searching: ${username}`);
+        // --- メイン処理 ---
+        async function loadData() {
+            if (!username) { window.location.href = 'index.html'; return; }
             
-            // 1. 公式データの取得 (プロキシを使用)
-            let rawData = null;
-            let success = false;
+            try {
+                // 1. 基本情報の取得 (Scratch公式API)
+                setStatus("Fetching Official Profile...");
+                const official = await fetchWithProxy(`https://api.scratch.mit.edu/users/${username}`);
+                
+                document.getElementById('u-name').textContent = official.username;
+                document.getElementById('u-avatar').src = `https://uploads.scratch.mit.edu/get_image/user/${official.id}_90x90.png`;
+                document.getElementById('u-joined').innerHTML = `<i data-lucide="calendar" size="12"></i> Joined ${official.history.joined.split('T')[0]}`;
+                
+                const country = official.profile.country;
+                document.getElementById('u-country-name').textContent = country || "Unknown Region";
+                document.getElementById('u-flag').textContent = getFlag(country);
 
-            for (let proxy of PROXIES) {
+                // 2. 統計情報の取得 (ScratchDB API)
+                setStatus("Fetching Global Statistics...");
                 try {
-                    const target = encodeURIComponent(`https://api.scratch.mit.edu/users/${username}`);
-                    log(`Trying proxy: ${proxy.split('/')[2]}`);
+                    // ScratchDBはCORSに寛容なことが多いが、安全のためプロキシ使用
+                    const db = await fetchWithProxy(`https://scratchdb.lefty.one/v3/user/info/${username}`);
+                    const s = db.statistics;
+                    const r = db.statistics.ranks;
                     
-                    const res = await fetch(proxy + (proxy.includes('allorigins') ? target : `https://api.scratch.mit.edu/users/${username}`), {
-                        cache: 'no-cache'
-                    });
-                    
-                    if (res.ok) {
-                        rawData = await res.json();
-                        success = true;
-                        log(`Success! Data received.`);
-                        break;
+                    // 数値セット
+                    document.getElementById('s-followers').textContent = fmt(s.followers);
+                    document.getElementById('s-views').textContent = fmt(s.views);
+                    document.getElementById('s-loves').textContent = fmt(s.loves);
+                    document.getElementById('s-favs').textContent = fmt(s.favorites);
+
+                    // 順位セット (Global / Country)
+                    document.getElementById('r-followers-g').textContent = fmtRank(r.followers);
+                    document.getElementById('r-views-g').textContent = fmtRank(r.views);
+                    document.getElementById('r-loves-g').textContent = fmtRank(r.loves);
+                    document.getElementById('r-favs-g').textContent = fmtRank(r.favorites);
+
+                    document.getElementById('r-followers-c').textContent = fmtRank(r.country.followers);
+                    document.getElementById('r-views-c').textContent = fmtRank(r.country.views);
+                    document.getElementById('r-loves-c').textContent = fmtRank(r.country.loves);
+                    document.getElementById('r-favs-c').textContent = fmtRank(r.country.favorites);
+
+                    // エンゲージメント計算
+                    if (s.views > 0) {
+                        const lRate = ((s.loves / s.views) * 100).toFixed(2);
+                        const fRate = ((s.favorites / s.views) * 100).toFixed(2);
+                        
+                        document.getElementById('rate-loves').textContent = `${lRate}%`;
+                        document.getElementById('rate-favs').textContent = `${fRate}%`;
+                        
+                        // グラフの幅 (最大20%くらいでカンストさせる見栄え調整)
+                        document.getElementById('bar-loves').style.width = `${Math.min(lRate * 5, 100)}%`;
+                        document.getElementById('bar-favs').style.width = `${Math.min(fRate * 5, 100)}%`;
                     }
                 } catch (e) {
-                    log(`Proxy failed: ${e.message}`);
+                    console.error("ScratchDB Error:", e);
+                    setStatus("ScratchDB Unavailable (Partial Data)");
                 }
-            }
 
-            if (!success) {
-                showError("全プロキシで通信に失敗しました。スマホの設定や通信制限を確認してください。");
+                // 3. プロジェクトの取得 (Scratch公式API)
+                setStatus("Fetching Projects...");
+                try {
+                    const projects = await fetchWithProxy(`https://api.scratch.mit.edu/users/${username}/projects`);
+                    renderProjects(projects);
+                } catch (e) {
+                    console.error("Projects Error:", e);
+                    document.getElementById('tab-views').innerHTML = `<p class="text-slate-500 text-xs">プロジェクトを取得できませんでした。</p>`;
+                }
+
+                // 表示切り替え
+                setStatus("Complete");
+                document.getElementById('loading-view').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                lucide.createIcons();
+
+            } catch (err) {
+                console.error("Fatal Error:", err);
+                document.getElementById('loading-view').classList.add('hidden');
+                document.getElementById('error-view').classList.remove('hidden');
+                document.getElementById('error-msg').textContent = "通信がブロックされたか、ユーザーが存在しません。";
+            }
+        }
+
+        // --- プロジェクト描画ロジック ---
+        function renderProjects(projects) {
+            if (!projects || projects.length === 0) {
+                const emptyHTML = `<p class="text-slate-500 text-xs py-4 text-center">プロジェクトがありません。</p>`;
+                document.getElementById('tab-views').innerHTML = emptyHTML;
+                document.getElementById('tab-loves').innerHTML = emptyHTML;
+                document.getElementById('tab-favs').innerHTML = emptyHTML;
                 return;
             }
 
-            // 基本情報反映
-            document.getElementById('name').textContent = rawData.username;
-            document.getElementById('joined').textContent = `Joined ${rawData.history.joined.split('T')[0]}`;
-            document.getElementById('country-tag').textContent = rawData.profile.country || "UNKNOWN";
-            
-            // アイコン (画像もプロキシ経由にしないと見られない場合がある)
-            document.getElementById('avatar').src = `https://uploads.scratch.mit.edu/get_image/user/${rawData.id}_90x90.png`;
-            
-            // 2. 統計データの取得 (ScratchDB)
-            log("Fetching Stats from ScratchDB...");
-            try {
-                // ScratchDBは比較的CORSに寛容だが、ここもプロキシを試す
-                const dbRes = await fetch(`${PROXIES[1]}https://scratchdb.lefty.one/v3/user/info/${username}`);
-                if (dbRes.ok) {
-                    const dbData = await dbRes.json();
-                    document.getElementById('stat-followers').textContent = dbData.statistics.followers.toLocaleString();
-                    document.getElementById('stat-views').textContent = dbData.statistics.views.toLocaleString();
-                    document.getElementById('rank').textContent = `#${(dbData.statistics.ranks.followers || '---').toLocaleString()}`;
-                    log("Stats updated.");
-                }
-            } catch (e) {
-                log("ScratchDB Fetch Error.");
-                document.getElementById('stat-followers').textContent = "---";
-                document.getElementById('stat-views').textContent = "---";
-            }
+            // それぞれの項目でソート
+            const byViews = [...projects].sort((a, b) => b.stats.views - a.stats.views).slice(0, 3);
+            const byLoves = [...projects].sort((a, b) => b.stats.loves - a.stats.loves).slice(0, 3);
+            const byFavs = [...projects].sort((a, b) => b.stats.favorites - a.stats.favorites).slice(0, 3);
 
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('user-view').classList.remove('hidden');
-            lucide.createIcons();
-        }
+            // HTML生成ヘルパー
+            const makeHTML = (arr, highlightStat) => arr.map((p, i) => `
+                <a href="https://scratch.mit.edu/projects/${p.id}/" target="_blank" class="flex items-center gap-4 p-3 rounded-2xl hover:bg-white/5 transition border border-transparent hover:border-white/10 group">
+                    <div class="w-6 text-center font-black text-slate-500 text-lg group-hover:text-orange-500 transition">${i + 1}</div>
+                    <img src="${p.image}" class="w-16 h-12 object-cover rounded-lg shadow-md bg-slate-800">
+                    <div class="flex-1 min-w-0">
+                        <h4 class="font-bold text-sm text-white truncate group-hover:text-orange-400 transition">${p.title}</h4>
+                        <div class="flex gap-3 mt-1 text-[10px] font-bold text-slate-400">
+                            <span class="${highlightStat === 'views' ? 'text-blue-400' : ''} flex items-center gap-1"><i data-lucide="eye" size="10"></i> ${fmt(p.stats.views)}</span>
+                            <span class="${highlightStat === 'loves' ? 'text-rose-400' : ''} flex items-center gap-1"><i data-lucide="heart" size="10"></i> ${fmt(p.stats.loves)}</span>
+                            <span class="${highlightStat === 'favs' ? 'text-amber-400' : ''} flex items-center gap-1"><i data-lucide="star" size="10"></i> ${fmt(p.stats.favorites)}</span>
+                        </div>
+                    </div>
+                </a>
+            `).join('');
 
-        function showError(msg) {
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('error-view').classList.remove('hidden');
-            document.getElementById('error-msg').textContent = msg;
-        }
-
-        if (user) {
-            fetchData(user);
-        } else {
-            window.location.href = 'index.html';
-        }
-    </script>
-</body>
-</html>
-
+            document.getElementById('tab-views').innerHTML = makeHTML(byViews, 'views');
+            document.getElementById('t
