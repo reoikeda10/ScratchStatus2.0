@@ -3,114 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Details - ScratchStats</title>
+    <title>User Detail - ScratchStats</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { background-color: #f1f5f9; color: #1e293b; font-family: sans-serif; }
-        .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: white; }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
     </style>
 </head>
-<body class="p-6">
+<body class="min-h-screen">
 
-    <div class="max-w-md mx-auto">
-        <a href="index.html" class="inline-block mb-6 text-orange-500 font-bold">← 戻る</a>
+    <div class="max-w-md mx-auto px-6 py-12">
+        <header class="mb-8">
+            <a href="index.html" class="inline-flex items-center gap-2 text-orange-500 font-bold hover:underline">
+                <i data-lucide="chevron-left"></i> 戻る
+            </a>
+        </header>
 
-        <!-- ローディング表示 -->
+        <!-- 状態表示 -->
         <div id="loading" class="text-center py-20">
-            <p class="text-lg animate-pulse">読み込み中...</p>
+            <div class="animate-spin text-orange-500 inline-block mb-4"><i data-lucide="refresh-cw" size="40"></i></div>
+            <p class="text-slate-400 font-medium">プロキシ経由でデータを取得中...</p>
+        </div>
+
+        <!-- 診断ログ (問題解決用) -->
+        <div id="debug-log" class="hidden bg-black/60 p-4 rounded-xl mb-6 font-mono text-[9px] text-green-400 border border-white/10 overflow-x-auto">
+            <div class="text-white border-b border-white/10 mb-1 pb-1">System Log:</div>
+            <div id="log-text"></div>
         </div>
 
         <!-- エラー表示 -->
-        <div id="error" class="hidden text-center py-10">
-            <h2 class="text-xl font-bold text-red-500 mb-2">ユーザーが見つかりません</h2>
-            <p class="text-sm text-slate-500 mb-4">名前が正しいか確認してください。</p>
-            <button onclick="location.reload()" class="bg-slate-200 px-4 py-2 rounded">再試行</button>
+        <div id="error-view" class="hidden">
+            <div class="bg-red-500/10 border border-red-500/50 p-8 rounded-[2rem] text-center mb-6">
+                <i data-lucide="x-circle" class="text-red-500 mx-auto mb-4" size="48"></i>
+                <h2 class="text-xl font-bold text-red-500 mb-2">取得できませんでした</h2>
+                <p id="error-msg" class="text-slate-400 text-sm mb-4"></p>
+                <button onclick="location.reload()" class="w-full py-3 bg-slate-800 rounded-xl font-bold text-white">リトライ</button>
+            </div>
         </div>
 
-        <!-- メインコンテンツ -->
-        <div id="content" class="hidden">
-            <div class="card text-center mb-4">
-                <img id="u-avatar" src="" class="w-24 h-24 rounded-2xl mx-auto mb-4 border-4 border-white shadow">
-                <h1 id="u-name" class="text-2xl font-black">---</h1>
-                <p id="u-country" class="text-slate-400 text-sm mb-4">---</p>
-                
-                <div class="grid grid-cols-2 gap-2 mt-6">
-                    <div class="bg-orange-50 p-4 rounded-xl">
-                        <p class="text-[10px] font-bold text-orange-400 uppercase">Followers</p>
-                        <p id="u-followers" class="text-lg font-bold">---</p>
+        <!-- ユーザーカード -->
+        <div id="user-view" class="hidden">
+            <div class="glass-card p-8 rounded-[3rem] shadow-2xl text-center">
+                <div class="relative inline-block mb-6">
+                    <img id="avatar" src="" class="w-32 h-32 rounded-[2.5rem] shadow-2xl border-4 border-slate-700 bg-slate-800 object-cover">
+                    <div id="country-tag" class="absolute -bottom-2 -right-2 bg-white text-slate-900 px-3 py-1 rounded-full text-[10px] font-black shadow-lg border border-slate-200">UNKNOWN</div>
+                </div>
+
+                <h2 id="name" class="text-3xl font-black mb-1 tracking-tight">---</h2>
+                <p id="joined" class="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-8">Joined ---</p>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-900/50 p-5 rounded-3xl border border-white/5">
+                        <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest mb-1">Followers</p>
+                        <p id="stat-followers" class="text-2xl font-bold">---</p>
                     </div>
-                    <div class="bg-blue-50 p-4 rounded-xl">
-                        <p class="text-[10px] font-bold text-blue-400 uppercase">Views</p>
-                        <p id="u-views" class="text-lg font-bold">---</p>
+                    <div class="bg-slate-900/50 p-5 rounded-3xl border border-white/5">
+                        <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">Total Views</p>
+                        <p id="stat-views" class="text-2xl font-bold">---</p>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-8 border-t border-white/5">
+                    <div class="flex justify-between items-center px-2">
+                        <div class="text-left">
+                            <p class="text-[9px] font-black text-slate-500 uppercase">Global Rank</p>
+                            <p id="rank" class="text-lg font-bold text-slate-300">#---</p>
+                        </div>
+                        <i data-lucide="award" class="text-orange-500" size="24"></i>
                     </div>
                 </div>
             </div>
-            
-            <div class="card">
-                <h2 class="font-bold mb-2">自己紹介</h2>
-                <p id="u-bio" class="text-sm text-slate-600 whitespace-pre-wrap">---</p>
-            </div>
-        </div>
-        
-        <!-- 技術的なログ (問題解決用) -->
-        <div id="debug" class="mt-10 p-4 bg-slate-800 text-white text-[10px] font-mono rounded overflow-x-auto">
-            <div>Log:</div>
         </div>
     </div>
 
     <script>
-        const log = (m) => { document.getElementById('debug').innerHTML += `<div>> ${m}</div>`; };
-        const params = new URLSearchParams(window.location.search);
-        const username = params.get('u');
+        lucide.createIcons();
+        const logArea = document.getElementById('log-text');
+        const debugPanel = document.getElementById('debug-log');
+        
+        function log(m) {
+            debugPanel.classList.remove('hidden');
+            logArea.innerHTML += `<div>> ${m}</div>`;
+            console.log(m);
+        }
 
-        async function load() {
-            if (!username) {
-                log("No username in URL");
+        const params = new URLSearchParams(window.location.search);
+        const user = params.get('u');
+
+        // CORS回避用のプロキシURL (複数の予備)
+        const PROXIES = [
+            "https://api.allorigins.win/raw?url=",
+            "https://corsproxy.io/?",
+            "https://thingproxy.freeboard.io/fetch/"
+        ];
+
+        async function fetchData(username) {
+            log(`Searching: ${username}`);
+            
+            // 1. 公式データの取得 (プロキシを使用)
+            let rawData = null;
+            let success = false;
+
+            for (let proxy of PROXIES) {
+                try {
+                    const target = encodeURIComponent(`https://api.scratch.mit.edu/users/${username}`);
+                    log(`Trying proxy: ${proxy.split('/')[2]}`);
+                    
+                    const res = await fetch(proxy + (proxy.includes('allorigins') ? target : `https://api.scratch.mit.edu/users/${username}`), {
+                        cache: 'no-cache'
+                    });
+                    
+                    if (res.ok) {
+                        rawData = await res.json();
+                        success = true;
+                        log(`Success! Data received.`);
+                        break;
+                    }
+                } catch (e) {
+                    log(`Proxy failed: ${e.message}`);
+                }
+            }
+
+            if (!success) {
+                showError("全プロキシで通信に失敗しました。スマホの設定や通信制限を確認してください。");
                 return;
             }
 
-            log(`Searching: ${username}`);
+            // 基本情報反映
+            document.getElementById('name').textContent = rawData.username;
+            document.getElementById('joined').textContent = `Joined ${rawData.history.joined.split('T')[0]}`;
+            document.getElementById('country-tag').textContent = rawData.profile.country || "UNKNOWN";
             
+            // アイコン (画像もプロキシ経由にしないと見られない場合がある)
+            document.getElementById('avatar').src = `https://uploads.scratch.mit.edu/get_image/user/${rawData.id}_90x90.png`;
+            
+            // 2. 統計データの取得 (ScratchDB)
+            log("Fetching Stats from ScratchDB...");
             try {
-                // 1. 基本情報取得 (公式API)
-                // キャッシュ回避のため ?t=タイムスタンプ を付与
-                const res1 = await fetch(`https://api.scratch.mit.edu/users/${username}?t=${Date.now()}`);
-                if (!res1.ok) throw new Error("User not found on Scratch");
-                
-                const data1 = await res1.json();
-                log("Found on Official API");
-
-                document.getElementById('u-name').textContent = data1.username;
-                document.getElementById('u-avatar').src = `https://uploads.scratch.mit.edu/get_image/user/${data1.id}_90x90.png`;
-                document.getElementById('u-country').textContent = data1.profile.country || "Unknown Country";
-                document.getElementById('u-bio').textContent = data1.profile.bio || "No bio.";
-
-                // 2. 統計情報取得 (ScratchDB)
-                try {
-                    const res2 = await fetch(`https://scratchdb.lefty.one/v3/user/info/${username}`);
-                    if (res2.ok) {
-                        const data2 = await res2.json();
-                        document.getElementById('u-followers').textContent = data2.statistics.followers.toLocaleString();
-                        document.getElementById('u-views').textContent = data2.statistics.views.toLocaleString();
-                        log("Stats loaded from ScratchDB");
-                    } else {
-                        log("ScratchDB response error");
-                    }
-                } catch (e) {
-                    log("ScratchDB connection failed");
+                // ScratchDBは比較的CORSに寛容だが、ここもプロキシを試す
+                const dbRes = await fetch(`${PROXIES[1]}https://scratchdb.lefty.one/v3/user/info/${username}`);
+                if (dbRes.ok) {
+                    const dbData = await dbRes.json();
+                    document.getElementById('stat-followers').textContent = dbData.statistics.followers.toLocaleString();
+                    document.getElementById('stat-views').textContent = dbData.statistics.views.toLocaleString();
+                    document.getElementById('rank').textContent = `#${(dbData.statistics.ranks.followers || '---').toLocaleString()}`;
+                    log("Stats updated.");
                 }
-
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('content').style.display = 'block';
-
-            } catch (err) {
-                log(`Error: ${err.message}`);
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
+            } catch (e) {
+                log("ScratchDB Fetch Error.");
+                document.getElementById('stat-followers').textContent = "---";
+                document.getElementById('stat-views').textContent = "---";
             }
+
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('user-view').classList.remove('hidden');
+            lucide.createIcons();
         }
 
-        window.onload = load;
+        function showError(msg) {
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error-view').classList.remove('hidden');
+            document.getElementById('error-msg').textContent = msg;
+        }
+
+        if (user) {
+            fetchData(user);
+        } else {
+            window.location.href = 'index.html';
+        }
     </script>
 </body>
 </html>
