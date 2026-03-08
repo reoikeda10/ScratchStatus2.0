@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Statistics - ScratchStats</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- グラフ表示用のライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .stat-card { background: white; border-radius: 1.5rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <header class="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+        <a href="index.html" class="text-xl font-bold text-orange-500 flex items-center gap-1">
+            <i data-lucide="bar-chart-3"></i> ScratchStats
+        </a>
+        <div class="flex gap-4">
+            <a href="ranking.html" class="text-slate-600 hover:text-orange-500 font-medium">ランキング</a>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 py-8">
+        <!-- ローディング表示 -->
+        <div id="loading" class="text-center py-20">
+            <div class="animate-spin text-orange-500 inline-block mb-4"><i data-lucide="loader-2" size="48"></i></div>
+            <p class="text-slate-500 text-lg">データを取得中...</p>
+        </div>
+
+        <!-- エラー表示 -->
+        <div id="error-message" class="hidden text-center py-20">
+            <i data-lucide="user-x" size="48" class="text-slate-300 inline-block mb-4"></i>
+            <h2 class="text-2xl font-bold mb-2">ユーザーが見つかりません</h2>
+            <p class="text-slate-500 mb-6">ユーザー名が正しいか、ScratchDBに登録されているか確認してください。</p>
+            <a href="index.html" class="bg-orange-500 text-white px-6 py-2 rounded-xl">トップに戻る</a>
+        </div>
+
+        <!-- メインコンテンツ (初期は非表示) -->
+        <div id="content" class="hidden">
+            <!-- プロフィールヘッダー -->
+            <div class="flex flex-col md:flex-row items-center gap-6 mb-8">
+                <img id="user-avatar" src="" alt="Avatar" class="w-32 h-32 rounded-3xl shadow-lg border-4 border-white">
+                <div class="text-center md:text-left">
+                    <h2 id="username" class="text-4xl font-extrabold mb-1">---</h2>
+                    <p id="user-join-date" class="text-slate-500 mb-4 flex items-center justify-center md:justify-start gap-1">
+                        <i data-lucide="calendar" size="16"></i> 20XX年に参加
+                    </p>
+                    <div class="flex gap-2">
+                        <span id="rank-tag" class="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-sm font-bold">Global Rank: #---</span>
+                        <span id="country-tag" class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-bold">---</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 統計グリッド -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div class="stat-card border-b-4 border-orange-500">
+                    <p class="text-slate-500 text-sm font-bold uppercase mb-1">フォロワー</p>
+                    <p id="stat-followers" class="text-3xl font-black">0</p>
+                </div>
+                <div class="stat-card border-b-4 border-blue-500">
+                    <p class="text-slate-500 text-sm font-bold uppercase mb-1">合計参照数</p>
+                    <p id="stat-views" class="text-3xl font-black">0</p>
+                </div>
+                <div class="stat-card border-b-4 border-rose-500">
+                    <p class="text-slate-500 text-sm font-bold uppercase mb-1">「好き」合計</p>
+                    <p id="stat-loves" class="text-3xl font-black">0</p>
+                </div>
+                <div class="stat-card border-b-4 border-amber-500">
+                    <p class="text-slate-500 text-sm font-bold uppercase mb-1">お気に入り合計</p>
+                    <p id="stat-favorites" class="text-3xl font-black">0</p>
+                </div>
+            </div>
+
+            <!-- グラフセクション -->
+            <div class="stat-card mb-8">
+                <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+                    <i data-lucide="line-chart" class="text-orange-500"></i> フォロワー推移 (イメージ)
+                </h3>
+                <canvas id="statsChart" height="150"></canvas>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // URLパラメータからユーザー名を取得
+        const params = new URLSearchParams(window.location.search);
+        const targetUser = params.get('u');
+
+        async function fetchUserData(username) {
+            const loading = document.getElementById('loading');
+            const content = document.getElementById('content');
+            const errorMsg = document.getElementById('error-message');
+
+            try {
+                // ScratchDB API を叩く
+                const response = await fetch(`https://scratchdb.lefty.one/v3/user/info/${username}`);
+                if (!response.ok) throw new Error('Not Found');
+                
+                const data = await response.json();
+
+                // データを画面に反映
+                document.getElementById('username').textContent = data.username;
+                document.getElementById('user-avatar').src = `https://uploads.scratch.mit.edu/get_image/user/${data.id}_90x90.png`;
+                document.getElementById('stat-followers').textContent = data.statistics.followers.toLocaleString();
+                document.getElementById('stat-views').textContent = data.statistics.views.toLocaleString();
+                document.getElementById('stat-loves').textContent = data.statistics.loves.toLocaleString();
+                document.getElementById('stat-favorites').textContent = data.statistics.favorites.toLocaleString();
+                document.getElementById('rank-tag').textContent = `Global Rank: #${data.statistics.ranks.followers}`;
+                document.getElementById('country-tag').textContent = data.country || 'Unknown';
+                document.getElementById('user-join-date').innerHTML = `<i data-lucide="calendar" size="16"></i> ${data.joined.split('T')[0]} に参加`;
+
+                // グラフの描画 (ダミーデータ。本来は過去データを蓄積して表示する)
+                initChart();
+
+                // UIの切り替え
+                loading.classList.add('hidden');
+                content.classList.remove('hidden');
+                lucide.createIcons();
+
+            } catch (err) {
+                loading.classList.add('hidden');
+                errorMsg.classList.remove('hidden');
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('statsChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['6日前', '5日前', '4日前', '3日前', '2日前', '昨日', '今日'],
+                    datasets: [{
+                        label: 'フォロワー数',
+                        data: [120, 150, 145, 180, 220, 215, 250], // ここに推移データを入れる
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+        }
+
+        if (targetUser) {
+            fetchUserData(targetUser);
+        } else {
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
+
