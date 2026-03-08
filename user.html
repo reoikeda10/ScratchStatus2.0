@@ -3,169 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Statistics - ScratchStats</title>
+    <title>Debug User Stats - ScratchStats</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .stat-card { background: white; border-radius: 1.5rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-slate-900 text-white min-h-screen">
 
-    <header class="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-        <a href="index.html" class="text-xl font-bold text-orange-500 flex items-center gap-1">
-            <i data-lucide="bar-chart-3"></i> ScratchStats
+    <div class="max-w-md mx-auto px-6 py-12">
+        <a href="index.html" class="inline-flex items-center gap-2 text-slate-400 mb-8 hover:text-white transition">
+            <i data-lucide="arrow-left" size="20"></i> 戻る
         </a>
-        <div class="flex gap-4">
-            <a href="ranking.html" class="text-slate-600 hover:text-orange-500 font-medium">ランキング</a>
-        </div>
-    </header>
 
-    <main class="max-w-5xl mx-auto px-4 py-8">
-        <!-- ローディング -->
-        <div id="loading" class="text-center py-20">
-            <div class="animate-spin text-orange-500 inline-block mb-4"><i data-lucide="loader-2" size="48"></i></div>
-            <p class="text-slate-500 text-lg">Scratchからデータを取得中...</p>
+        <div id="loading-area" class="text-center py-10">
+            <div class="animate-spin inline-block text-orange-500 mb-4"><i data-lucide="loader-2" size="40"></i></div>
+            <p id="status-text" class="text-slate-400">APIに接続中...</p>
         </div>
 
-        <!-- エラー表示 -->
-        <div id="error-message" class="hidden text-center py-20">
-            <i data-lucide="user-x" size="48" class="text-slate-300 inline-block mb-4"></i>
-            <h2 class="text-2xl font-bold mb-2">ユーザーが見つかりません</h2>
-            <p class="text-slate-500 mb-6">ユーザー名が正しいか、公式Scratchに存在するか確認してください。</p>
-            <a href="index.html" class="bg-orange-500 text-white px-6 py-3 rounded-xl font-bold">トップに戻って再検索</a>
+        <div id="debug-log" class="hidden bg-black/50 p-4 rounded-xl mb-6 font-mono text-[10px] text-green-400 border border-white/10">
+            <!-- 診断ログがここに出ます -->
         </div>
 
-        <!-- コンテンツ -->
-        <div id="content" class="hidden">
-            <div class="flex flex-col md:flex-row items-center gap-6 mb-8">
-                <img id="user-avatar" src="" alt="Avatar" class="w-32 h-32 rounded-3xl shadow-lg border-4 border-white bg-slate-200">
-                <div class="text-center md:text-left">
-                    <h2 id="username" class="text-4xl font-extrabold mb-1">---</h2>
-                    <p id="user-join-date" class="text-slate-500 mb-4 flex items-center justify-center md:justify-start gap-1 font-medium">
-                        <i data-lucide="calendar" size="16"></i> 読み込み中...
-                    </p>
-                    <div class="flex flex-wrap justify-center md:justify-start gap-2">
-                        <span id="rank-tag" class="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-sm font-bold">---</span>
-                        <span id="country-tag" class="bg-blue-100 text-blue-600 px-3 py-1 rounded-full text-sm font-bold">---</span>
+        <div id="error-area" class="hidden text-center">
+            <div class="bg-red-500/10 border border-red-500/50 p-6 rounded-3xl mb-6">
+                <i data-lucide="alert-circle" class="text-red-500 mx-auto mb-3" size="32"></i>
+                <h2 class="text-xl font-bold text-red-500 mb-2">ユーザーが見つかりません</h2>
+                <p id="error-detail" class="text-slate-400 text-sm italic">詳細なエラーメッセージ</p>
+            </div>
+            <button onclick="location.reload()" class="w-full py-4 bg-slate-800 rounded-2xl font-bold hover:bg-slate-700 transition">再読み込みを試す</button>
+        </div>
+
+        <div id="result-area" class="hidden">
+            <div class="bg-slate-800 p-8 rounded-[2.5rem] shadow-2xl border border-white/5 text-center">
+                <img id="avatar" src="" class="w-32 h-32 rounded-[2rem] mx-auto mb-6 shadow-xl border-4 border-slate-700 bg-slate-700">
+                <h2 id="display-name" class="text-3xl font-black mb-2 tracking-tight text-white">---</h2>
+                <div class="flex justify-center gap-2 mb-6">
+                    <span id="country-badge" class="bg-white/10 px-3 py-1 rounded-full text-xs font-bold text-slate-300 tracking-wider uppercase">---</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 text-left">
+                    <div class="bg-white/5 p-4 rounded-2xl">
+                        <p class="text-[9px] font-black text-orange-500 uppercase tracking-widest mb-1">Followers</p>
+                        <p id="stat-followers" class="text-xl font-bold">---</p>
+                    </div>
+                    <div class="bg-white/5 p-4 rounded-2xl">
+                        <p class="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">Views</p>
+                        <p id="stat-views" class="text-xl font-bold">---</p>
                     </div>
                 </div>
             </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div class="stat-card border-b-4 border-orange-500">
-                    <p class="text-slate-400 text-xs font-black uppercase mb-1 tracking-widest">フォロワー</p>
-                    <p id="stat-followers" class="text-3xl font-black">---</p>
-                </div>
-                <div class="stat-card border-b-4 border-blue-500">
-                    <p class="text-slate-400 text-xs font-black uppercase mb-1 tracking-widest">合計参照数</p>
-                    <p id="stat-views" class="text-3xl font-black">---</p>
-                </div>
-                <div class="stat-card border-b-4 border-rose-500">
-                    <p class="text-slate-400 text-xs font-black uppercase mb-1 tracking-widest">合計「好き」</p>
-                    <p id="stat-loves" class="text-3xl font-black">---</p>
-                </div>
-                <div class="stat-card border-b-4 border-amber-500">
-                    <p class="text-slate-400 text-xs font-black uppercase mb-1 tracking-widest">お気に入り</p>
-                    <p id="stat-favorites" class="text-3xl font-black">---</p>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
-                    <i data-lucide="line-chart" class="text-orange-500"></i> フォロワー推移 (イメージ)
-                </h3>
-                <canvas id="statsChart" height="150"></canvas>
-                <p class="text-[10px] text-slate-400 mt-4 text-center">※現在グラフ機能はテストデータです。将来的に自動更新が導入されます。</p>
-            </div>
         </div>
-    </main>
+    </div>
 
     <script>
         lucide.createIcons();
+        const log = (msg) => {
+            const el = document.getElementById('debug-log');
+            el.classList.remove('hidden');
+            el.innerHTML += `<div>> ${msg}</div>`;
+        };
 
         const params = new URLSearchParams(window.location.search);
-        const targetUser = params.get('u');
+        const user = params.get('u');
 
-        async function fetchUserData(username) {
-            const loading = document.getElementById('loading');
-            const content = document.getElementById('content');
-            const errorMsg = document.getElementById('error-message');
+        async function startSearch() {
+            if (!user) {
+                document.getElementById('status-text').textContent = "ユーザー名が指定されていません";
+                return;
+            }
 
+            log(`Searching for: ${user}`);
+            
             try {
-                // 手順1: Scratch公式APIで基本情報を取得 (ScratchDBが止まっていても動く)
-                const officialRes = await fetch(`https://api.scratch.mit.edu/users/${username}`);
-                if (!officialRes.ok) throw new Error('Official Not Found');
-                const officialData = await officialRes.json();
+                // 1. まず本家API
+                log(`Connecting to api.scratch.mit.edu...`);
+                const res1 = await fetch(`https://api.scratch.mit.edu/users/${user}`);
+                if (!res1.ok) {
+                    throw new Error(`公式APIで見つかりません (${res1.status})`);
+                }
+                const data1 = await res1.json();
+                log(`User found on Official API! ID: ${data1.id}`);
 
-                // 基本情報を先に表示
-                document.getElementById('username').textContent = officialData.username;
-                document.getElementById('user-avatar').src = `https://uploads.scratch.mit.edu/get_image/user/${officialData.id}_90x90.png`;
-                document.getElementById('user-join-date').innerHTML = `<i data-lucide="calendar" size="16"></i> ${officialData.history.joined.split('T')[0]} に参加`;
-                document.getElementById('country-tag').textContent = officialData.profile.country || 'Unknown';
-
-                // 手順2: ScratchDBから詳細な統計を取得
+                // 2. 次に統計API
+                log(`Connecting to scratchdb.lefty.one...`);
+                let followers = "---";
+                let views = "---";
                 try {
-                    const dbRes = await fetch(`https://scratchdb.lefty.one/v3/user/info/${username}`);
-                    if (dbRes.ok) {
-                        const dbData = await dbRes.json();
-                        document.getElementById('stat-followers').textContent = (dbData.statistics.followers || 0).toLocaleString();
-                        document.getElementById('stat-views').textContent = (dbData.statistics.views || 0).toLocaleString();
-                        document.getElementById('stat-loves').textContent = (dbData.statistics.loves || 0).toLocaleString();
-                        document.getElementById('stat-favorites').textContent = (dbData.statistics.favorites || 0).toLocaleString();
-                        document.getElementById('rank-tag').textContent = `Global Rank: #${dbData.statistics.ranks.followers || '---'}`;
+                    const res2 = await fetch(`https://scratchdb.lefty.one/v3/user/info/${user}`);
+                    if (res2.ok) {
+                        const data2 = await res2.json();
+                        followers = data2.statistics.followers.toLocaleString();
+                        views = data2.statistics.views.toLocaleString();
+                        log(`Stats loaded from ScratchDB.`);
                     } else {
-                        throw new Error();
+                        log(`ScratchDB returned error. Using partial data.`);
                     }
                 } catch (e) {
-                    // ScratchDBがダメな場合でも、一部の統計は公式や計算で補う
-                    document.getElementById('stat-followers').textContent = "データ取得中...";
-                    document.getElementById('rank-tag').textContent = "Stats Unavailable";
+                    log(`ScratchDB connection failed. Continuing...`);
                 }
 
-                initChart();
-                loading.classList.add('hidden');
-                content.classList.remove('hidden');
+                // 表示
+                document.getElementById('avatar').src = `https://uploads.scratch.mit.edu/get_image/user/${data1.id}_90x90.png`;
+                document.getElementById('display-name').textContent = data1.username;
+                document.getElementById('country-badge').textContent = data1.profile.country || "Unknown";
+                document.getElementById('stat-followers').textContent = followers;
+                document.getElementById('stat-views').textContent = views;
+
+                document.getElementById('loading-area').classList.add('hidden');
+                document.getElementById('result-area').classList.remove('hidden');
                 lucide.createIcons();
 
             } catch (err) {
-                console.error(err);
-                loading.classList.add('hidden');
-                errorMsg.classList.remove('hidden');
+                log(`Fatal Error: ${err.message}`);
+                document.getElementById('loading-area').classList.add('hidden');
+                document.getElementById('error-area').classList.remove('hidden');
+                document.getElementById('error-detail').textContent = err.message;
             }
         }
 
-        function initChart() {
-            const ctx = document.getElementById('statsChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['6日前', '5日前', '4日前', '3日前', '2日前', '昨日', '今日'],
-                    datasets: [{
-                        label: 'フォロワー',
-                        data: [100, 110, 105, 130, 150, 145, 160],
-                        borderColor: '#f97316',
-                        backgroundColor: 'rgba(249, 115, 22, 0.1)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: false } }
-                }
-            });
-        }
-
-        if (targetUser) {
-            fetchUserData(targetUser);
-        } else {
-            window.location.href = 'index.html';
-        }
+        startSearch();
     </script>
 </body>
 </html>
